@@ -1,10 +1,13 @@
 import PortIndex from './Public/PortPublic'
 import store from '@/store/index';
 import axios from 'axios'; // 引入axios
+import code from '@/pages/common/js/code.js' // 引入公共的js
+import ElementUI from 'element-ui' // 引入element
+import 'element-ui/lib/theme-chalk/index.css'
 // 每实例化一个接口则是基于一个模块
 
 class Port {
-    constructor(params){
+    constructor(params,methods=()=>{}){
 
         // 生成实例名称
         this.name = params.name
@@ -19,12 +22,13 @@ class Port {
         this.before = {}
         this.axios = axios
         this.methods = (...res)=>{
+            console.log(params.methods,'____methods')
             return params.methods(...res)
         }
     }
 
     // 数据集群注册
-    scope(name,params){
+    scope(name,params,...data){
         if(typeof name !== 'string' || Array.isArray(params) || typeof params !== 'object' ) throw new Error(`参数不正确！`)
         let arr = name.split(':')
         if(arr[0] === 'before'){ Object.assign(this.before,{ 
@@ -53,12 +57,12 @@ class Port {
     }
 
     // 同步集群调用机制
-    notAsyncUse(){
+    notAsyncUse(params){
         
     }
 
     // 前置集群调用机制
-    beforeUse(){ 
+    beforeUse(params){ 
         
     }
 
@@ -117,9 +121,22 @@ class Port {
             //返回响应之后拦截
             response:()=>{
                 example.interceptors.response.use((response) =>{
+                    // console.log("*************",ElementUI);
+                    // console.log(code.codeNum.TOKEN_ERROR);
                     // 如果返回的状态码为200，说明接口请求成功，可以正常拿到数据
                     // 否则的话抛出错误
+                    // console.log(response.data);
+                    // console.log(code.codeNum.NOT_PERMISSION);
 
+                    if (response.data.code == code.codeNum.TOKEN_ERROR) {
+                        ElementUI.Message.error('登录状态已失效需要跳到登录页面');
+                        window.closeUploadDialog && window.closeUploadDialog()
+                        setTimeout(function() {
+                            sessionStorage.removeItem('login');
+                            window.location.href = '/';
+                        }, 2000);
+                        return;
+                    }
                     if (response.status === 200) {
                         return Promise.resolve(response);
                     } else {
@@ -132,7 +149,12 @@ class Port {
                             // 未登录则跳转登录页面，并携带当前页面的路径
                             // 在登录成功后返回当前页面，这一步需要在登录页操作。
                             case 401:
-                            
+                            router.replace({
+                                path: '/login',
+                                query: {
+                                redirect: router.currentRoute.fullPath
+                                }
+                            });
                             break;
                     
                             // 403 token过期
@@ -140,32 +162,54 @@ class Port {
                             // 清除本地token和清空vuex中token对象
                             // 跳转登录页面
                             case 403:
-                           
+                            ElementUI.Message.error('登录过期，请重新登录！');
+                            // 清除token
+                            localStorage.removeItem(user_info);
+                            window.closeUploadDialog && window.closeUploadDialog()
+                            // store.commit('loginSuccess', null);
+                            // 跳转登录页面，并将要浏览的页面fullPath传过去，登录成功后跳转需要访问的页面
+                            setTimeout(() => {
+                    
+                                router.replace({
+                                path: '/login',
+                                query: {
+                                    redirect: router.currentRoute.fullPath
+                                }
+                                });
+                            }, 1000);
                             break;
                     
                             // 404请求不存在
                             case 404:
+                            ElementUI.Message.error('网络请求不存在！');
                             break;
                             // 500请求不存在
                             case 500:
+                            ElementUI.Message.error('网络异常！');
                             break;
                             // -501请求不存在
                             case 501:
+                            ElementUI.Message.error('网络异常！');
                             break;
                             case 502:
+                            ElementUI.Message.error('网络异常！');
                             break;
                             case 503:
+                            ElementUI.Message.error('网络异常！');
                             break;
                             case 504:
+                            ElementUI.Message.error('网络异常！');
                             break;
                             // 其他错误，直接抛出错误提示
                             default:
+                            // ElementUI.Message.error("网络异常！");
                             break;
                         }
                         return Promise.reject(error.response);
                     } else {
                         // console.log('error',error.message)
                         // 上传文件中轮询网络状况时不提示错误信息
+                        // !window.Netchecking && ElementUI.Message.error("网络异常！");
                         return Promise.reject(error.message)
                     }
                 })
@@ -224,7 +268,7 @@ class Port {
                 Object.assign(data,{data: params,method: 'post'})
         }
         let libAxios = axios.create({
-            baseURL:'api/',
+            baseURL:allUrl,
             // withCredentials: true,
         })
         // 

@@ -1,4 +1,4 @@
-import MODULES from './Public/ModulePublic'
+import MODULES from '../Public/ModulePublic'
 
 class Manage{
     constructor(){
@@ -21,7 +21,6 @@ class Manage{
     
     // 仓库读取数据
     read(key,...params){
-        console.log(key,MODULES)
         if(this.area[key]){
             return this.area[key]
         }else if(MODULES[`__${key.trim().toUpperCase()}`]){
@@ -32,8 +31,12 @@ class Manage{
     }
 
     // 重置仓库某实例
-    rese(name,...params){
-        this.area[name] = new MODULES[`__${name.trim().toUpperCase()}`](...params)
+    reset(name,...params){
+        if(MODULES[`__${name.trim().toUpperCase()}`]){
+            this.area[name] = new MODULES[`__${name.trim().toUpperCase()}`](...params)
+        }else{
+            throw new Error('无法找到该模块！')
+        }
         return this.area[name]
     }
 
